@@ -1,0 +1,1 @@
+Namespace(sh_degree=3, source_path='/nfs/lschnaitl/projects/360_v2/garden', model_path='output/garden', images='images', resolution=-1, white_background=False, data_device='cuda', eval=False)
