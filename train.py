@@ -137,10 +137,13 @@ def training(
 
         # Loss
         gt_image = viewpoint_cam.original_image.cuda()
-        gt_normal = viewpoint_cam.normal_map.cuda()
-        seg_hr = gt_normal.unsqueeze(0)  # -> [1, 3, H, W]
-        seg_ds_area = F.interpolate(seg_hr, size=(gt_image.shape[1], gt_image.shape[2]), mode="area")  # [1, 3, H0, W0]
-        gt_normal = seg_ds_area.squeeze(0)  # -> [3, H0, W0]
+
+        gt_normal = None
+        if viewpoint_cam.normal_map is not None:
+            gt_normal = viewpoint_cam.normal_map.cuda()
+            seg_hr = gt_normal.unsqueeze(0)  # -> [1, 3, H, W]
+            seg_ds_area = F.interpolate(seg_hr, size=(gt_image.shape[1], gt_image.shape[2]), mode="area")  # [1, 3, H0, W0]
+            gt_normal = seg_ds_area.squeeze(0)  # -> [3, H0, W0]
 
         pixel_loss = l1_loss(image, gt_image)
 
@@ -158,8 +161,11 @@ def training(
         rend_normal  = render_pkg['rend_normal']
         lambda_normal = opt.lambda_normals if iteration > opt.iteration_mesh else 0 # 0.001
 
-        normal_error = (1 - (rend_normal * gt_normal).sum(dim=0))[None]
-        normal_loss = lambda_normal * (normal_error).mean()
+        if gt_normal is not None:
+            normal_error = (1 - (rend_normal * gt_normal).sum(dim=0))[None]
+            normal_loss = lambda_normal * (normal_error).mean()
+        else:
+            normal_loss = 0.0
         
         if iteration < opt.start_opacity_floor:
             loss_weight = triangles.get_vertex_weight[triangles._triangle_indices].mean() * lambda_weight
